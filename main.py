@@ -16,10 +16,34 @@ from kivy.uix.widget import Widget
 from kivy.properties import ObjectProperty, StringProperty
 from math import sqrt, sin, cos, atan, pi
 import sys
-from kivy.metrics import dp
+from kivy.uix.screenmanager import ScreenManager, Screen
 #Window.size = (500, 400)
 
 Builder.load_string("""
+<MenuScreen>:
+    AnchorLayout:
+        anchor_x: "center"
+        anchor_y: "bottom"
+        BoxLayout:
+            orientation: "vertical"
+            size_hint: (.5,.2)
+            Button:
+                text: 'Play'
+                on_press: root.manager.current = 'levels'
+            Button:
+                text: 'Quit'
+                on_press: sys.exit()
+<GameScreen>:
+    FloatLayout:
+        id:gamescreen
+<LevelScreen>:
+    AnchorLayout:
+        anchor_x: "center"
+        anchor_y: "top"
+        BoxLayout:
+            id: levelMenu
+            orientation: "vertical"
+            size_hint: (.5, .2)
 <Player>:
     Image:
         id: player
@@ -186,7 +210,7 @@ class Player(Widget):
         if self.node:
             self.angle = self.calcAngle()
     def on_touch_down(self, key):
-        if self.parent.parent.children[2].collide_point(key.x, key.y) or self.parent.parent.children[1].collide_point(key.x, key.y):
+        if  self.parent.parent.children[0].collide_point(key.x, key.y):
             return None #CAN CHANGE TO IF
         if self.node:
             lAngle = self.angle+(pi/2)
@@ -231,53 +255,33 @@ class Wall(Widget):
         self.ids["wall"].width = size_x*window_ratio_x
         self.ids["wall"].height = size_y*window_ratio_y
 
-class gameScreen(Widget):
-    def __init__(self, **kwargs):
-        super(gameScreen, self).__init__(**kwargs)
+class game_layout(Widget):
+    def __init__(self, level,**kwargs):
+        super(game_layout, self).__init__(**kwargs)
         self.levelBuilder = levelBuilder()
-        self.level = 1
-        #Menu
-        self.myMenu = GridLayout(cols = 1,orientation = "vertical", size_hint_y = None)
-        self.popupScroll = ScrollView(size_hint_y = None, size = (Window.width, Window.height*.9))
-        self.popupScroll.add_widget(self.myMenu)
-        self.popup = Popup(content = self.popupScroll, title = "Choose a plugin", size_hint= (.5,1))
-
-        self.nodeList = [Node(200, 130, 50), Node(400, 130, 50), Node(400, 400, 50)]
-        self.obstacleList = [Obstacle(300, 130)]
-        self.wallList = [Wall(600,100,100,900, 0)]
+        self.nodeList = []
+        self.obstacleList = []
+        self.wallList = []
 
         self.myPlayer = Player(self.nodeList, self.obstacleList, self.wallList)
         Clock.schedule_interval(self.myPlayer.update, 1/30.)
         self.gameLayout = FloatLayout(size_hint = (None, None))
         self.myLayout = FloatLayout(size_hint = (None, None))
-        self.gameLayout.add_widget(self.myPlayer)
-        for x in range(len(self.nodeList)):
-            self.gameLayout.add_widget(self.nodeList[x])
-        for x in range(len(self.obstacleList)):
-            self.gameLayout.add_widget(self.obstacleList[x])
-        for x in range(len(self.wallList)):
-            self.gameLayout.add_widget(self.wallList[x])
-
-
-        self.restartButton = Button(pos = (0,Window.height*9/10), size_hint = (None, None),size = (Window.width/5, Window.height/5), on_release = self.myPlayer.restart)
-        self.levelSelectButton = Button(pos = (Window.width/5,Window.height*9/10), size = (Window.width/5, Window.height/5), size_hint = (None, None), on_release = self.loadMenu)
-        self.myLayout.add_widget(self.restartButton)
-        self.myLayout.add_widget(self.levelSelectButton)
+        self.loadLevel(level)
         self.myLayout.add_widget(self.gameLayout)
-
-        for x in self.levelBuilder.find_levels():
-            self.myMenu.add_widget(Button(text = x, on_press = self.levelHelper))
+    def select_levels(self, parent):
+        self.popup.dismiss()
+        print self.parent
+    def select_main(self, parent):
+        self.popup.dismiss()
     def levelHelper(self, parent):
         print parent.text
         self.level = parent.text[parent.text.find("/"):parent.text.find(".")]
         self.loadLevel()
     def loadMenu(self, *arg):
         self.popup.open()
-    def closeMenu(self):
-        self.popup.dismiss()
-    def loadLevel(self):
-        self.closeMenu()
-        listy = self.levelBuilder.build_level(self.level) # wall, node, obstacle
+    def loadLevel(self, level):
+        listy = self.levelBuilder.build_level(level) # wall, node, obstacle
         self.gameLayout.clear_widgets()
         self.wallList = listy[0]
         self.nodeList = listy[1]
@@ -296,9 +300,46 @@ class gameScreen(Widget):
 
     def returnGame(self):
         return self.myLayout
+class MenuScreen(Screen):
+    pass
+class GameScreen(Screen):
+    pass
+class LevelScreen(Screen):
+    pass
+class GameClient(Widget):
+    def __init__(self):
+        self.gamescreen = GameScreen(name = 'game')
+        self.gamescreen.ids["gamescreen"].add_widget(game_layout(1).returnGame())
+        self.levelscreen = LevelScreen(name = 'levels')
+        self.sm = ScreenManager()
+        self.sm.add_widget(MenuScreen(name='menu'))
+        self.sm.add_widget(self.gamescreen)
+        self.sm.add_widget(self.levelscreen)
+        for level in levelBuilder().find_levels():
+            self.levelscreen.ids["levelMenu"].add_widget(Button(text = level, on_press = self.enter_level))
+
+        self.myMenu = GridLayout(cols = 1,orientation = "vertical", size_hint= (1,1))
+        #self.popupScroll = ScrollView(size_hint_y = None, size = (Window.width, Window.height*.9), content = self.myMenu)
+        self.popup = Popup(content = self.myMenu, title = "Menu", size_hint= (.5,1))
+
+        self.myMenu.add_widget(Button(text = "Resume", on_press = self.popup.dismiss, size_hint = (1, 1)))
+        self.myMenu.add_widget(Button(text = "Levels", on_press = self.select_levels, size_hint = (1, 1)))
+        self.myMenu.add_widget(Button(text = "Main Screen", on_press = self.select_main, size_hint = (1, 1)))
+    def select_levels(self, parent):
+        self.popup.dismiss()
+        self.sm.current = "levels"
+    def select_main(self, parent):
+        self.popup.dismiss()
+        self.sm.current = "menu"
+    def enter_level(self, obj):
+        self.gamescreen.ids["gamescreen"].clear_widgets()
+        self.gamescreen.ids["gamescreen"].add_widget(game_layout(obj.text[obj.text.find("/"):obj.text.find(".")]).returnGame())
+        self.gamescreen.ids["gamescreen"].add_widget(Button(pos = (0, Window.height*9/10), size_hint = (None, None), size = (Window.width/5, Window.height/5), on_release = self.popup.open))
+        self.sm.current = "game"
+    def startGame(self):
+        return self.sm
 class TestApp(App):
     def build(self):
-        myScreen = gameScreen()
-        return myScreen.returnGame()
+        return GameClient().startGame()
 if __name__ == '__main__':
     TestApp().run()
