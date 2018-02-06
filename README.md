@@ -7,9 +7,9 @@ The purpose of this is to create a working application and hopefully upload it t
 Bouncing Game has an outside-of-client customizable level system. The format is below
 
     <level>.txt
-Node: center_x, center_y, radius
-Obstacle: center_x, center_y
-Wall: center_x, center_y, width, height, angle
+    Node: center_x, center_y, radius
+    Obstacle: center_x, center_y
+    Wall: center_x, center_y, width, height, angle
 
 
 
