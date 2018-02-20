@@ -10,30 +10,58 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 import time
 from kivy.app import App
-from kivy.clock import Clock
+#from kivy.clock import Clock
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.widget import Widget
 from kivy.properties import ObjectProperty, StringProperty
 from math import sqrt, sin, cos, atan, pi
 import sys
+from kivy.clock import Clock
 from kivy.uix.screenmanager import ScreenManager, Screen
 Window.size = (500, 400)
 
 Builder.load_string("""
-<MenuScreen>:
-    AnchorLayout:
-        anchor_x: "center"
-        anchor_y: "bottom"
-        BoxLayout:
-            orientation: "vertical"
-            size_hint: (.5,.2)
-            Button:
-                text: 'Play'
-                on_press: root.manager.current = 'levels'
-            Button:
-                text: 'Quit'
-                on_press: sys.exit()
+<Game_layout>:
+    size_hint: (1,1)
+    FloatLayout:
+        size_hint: (1,1)
+        id: myLayout
+<Cube>:
+    ScreenManager:
+        id: sm
+        size: root.width, root.height
+        Screen:
+            size_hint: (1,1)
+            id: screen_zero
+            name: "0"
+            Game_layout:
+                id: layout0
+        Screen:
+            id: screen_one
+            name: "1"
+            Game_layout:
+                id: layout1
+        Screen:
+            id: screen_two
+            name: "2"
+            Game_layout:
+                id: layout2
+        Screen:
+            id: screen_three
+            name: "3"
+            Game_layout:
+                id: layout3
+        Screen:
+            id: screen_four
+            name: "4"
+            Game_layout:
+                id: layout4
+        Screen:
+            id: screen_five
+            name: "5"
+            Game_layout:
+                id: layout5
 <GameScreen>:
     FloatLayout:
         id:gamescreen
@@ -125,25 +153,30 @@ class levelBuilder():
             myList = []
             for line in text.split("\n"):
                 smallList = []
-                for key in line.split(": "):
-                    smallList.append(key)
-                myList.append(smallList)
+                myList.append(line)
             return myList
         except IOError:
             return
+    def string_to_list(self, string):
+        myList = []
+        for x in string.split(","):
+            myList.append(x)
+        return myList
     def parseList(self,listy):
-        wallList = []
-        nodeList = []
-        obstacleList = []
-        for x in listy:
-            paramList = x[1].split(",")
-            if x[0] == "wall":
-                wallList.append(self.makeWall(paramList))
-            if x[0] == "node":
-                nodeList.append(self.makeNode(paramList))
-            if x[0] == "object":
-                obstacleList.append(self.makeObstacle(paramList))
-        return [wallList, nodeList, obstacleList]
+        returnList = []#list of faces
+        for x in listy: #Each face; always 6
+            nodelist = []
+            walllist = []
+            obstaclelist = []
+            lists = x.split("|")
+            for node in lists[0].split(";"):
+                nodelist.append(self.makeNode(self.string_to_list(node)))
+            for wall in lists[1].split(";"):
+                walllist.append(self.makeWall(self.string_to_list(wall)))
+            for obstacle in lists[2].split(";"):
+                obstaclelist.append(self.makeObstacle(self.string_to_list(obstacle)))
+            returnList.append([nodelist, walllist, obstaclelist])
+        return returnList
     
     def return_level(self,level):
         myBuilder = levelBuilder()
@@ -154,13 +187,13 @@ class levelBuilder():
 
 
 class Player(Widget):
-    def __init__(self, nodelist, obstaclelist, walllist, **kwargs):
+    def __init__(self, nodelist, walllist, obstaclelist, **kwargs):
         self.mySize = (15*window_ratio_y,15*window_ratio_y)
         super(Player, self).__init__(**kwargs)
-        self.start_center = [0,0]
+        self.start_center = [40,40]
         self.finishNode = None
         self.nodelist = nodelist
-        self.finishNode = self.nodelist[-1]
+        #self.finishNode = self.nodelist[-1]
         self.obstaclelist = obstaclelist
         self.walllist = walllist
         self.restart()
@@ -172,8 +205,14 @@ class Player(Widget):
         if not self.node:
             self.checkNode()
     def inBound(self):
-        if self.ids["player"].center_x <= 0 or self.ids["player"].y <= 0 or self.ids["player"].center_x >= Window.width or self.ids["player"].center_y >= Window.height: 
-            self.restart()
+        if self.ids["player"].center_x <= 0:
+            self.parent.change_face(3)
+        elif self.ids["player"].y <= 0:
+            self.parent.change_face(2)
+        elif self.ids["player"].center_x >= Window.width:
+            self.parent.change_face(1)
+        elif self.ids["player"].center_y >= Window.height: 
+            self.parent.change_face(0)
     def updatePos(self):
         self.inBound()
         if self.node == None:
@@ -184,7 +223,6 @@ class Player(Widget):
             self.ids["player"].center_x = self.node.ids["node"].center_x + self.node.radius*window_ratio_y*cos(self.angle)
             self.ids["player"].center_y = self.node.ids["node"].center_y + self.node.radius*window_ratio_y*sin(self.angle)
     def calcAngle(self):
-        #print self.finishNode
         if self.node == self.finishNode:
             self.finished = True
         ydif = (float)(self.node.ids["node"].center_y - self.ids["player"].center_y)
@@ -228,8 +266,9 @@ class Player(Widget):
         if self.node:
             self.angle = self.calcAngle()
     def on_touch_down(self, key):
-        if  self.parent.parent.children[0].collide_point(key.x, key.y):
-            return None #CAN CHANGE TO IF
+        print self.parent
+        #if  self.parent.parent.children[0].collide_point(key.x, key.y): #BUTTON DETECTION
+            #return None #CAN CHANGE TO IF
         if self.node:
             lAngle = self.angle+(pi/2)
             x = self.node.radius*cos(lAngle)
@@ -253,7 +292,8 @@ class Player(Widget):
         self.ids["player"].center = self.start_center
         self.direction = 0
         self.lastWall = [None, 0]
-         
+    def setPos(self, x, y):
+        self.ids["player"].center = (x,y)
 class Node(Widget):
     def __init__(self,x,y,radius, **kwargs):
         self.mySize = (10*window_ratio_x,10*window_ratio_y)
@@ -273,21 +313,24 @@ class Wall(Widget):
         self.ids["wall"].width = size_x*window_ratio_x
         self.ids["wall"].height = size_y*window_ratio_y
 
-class game_layout(Widget):
-    def __init__(self, level,**kwargs):
-        super(game_layout, self).__init__(**kwargs)
+class Game_layout(Widget):
+    def __init__(self, **kwargs):
+        super(Game_layout, self).__init__(**kwargs)
         self.finished = False
         self.levelBuilder = levelBuilder()
-        self.nodeList = ["placeholder"]
+        self.nodeList = []
         self.obstacleList = []
         self.wallList = []
-        self.myPlayer = Player(self.nodeList, self.obstacleList, self.wallList)
-        Clock.schedule_interval(self.myPlayer.update, 1/30.)
-        Clock.schedule_interval(self.check_finished, 1)
         self.gameLayout = FloatLayout(size_hint = (None, None))
-        self.myLayout = FloatLayout(size_hint = (None, None))
-        self.loadLevel(level)
-        self.myLayout.add_widget(self.gameLayout)
+        self.add_widget(self.gameLayout)
+    def get_lists(self):
+        return [self.nodeList, self.wallList, self.obstacleList]
+    def set_lists(self, nodelist, walllist, obstaclelist):
+        self.nodeList = nodelist
+        self.obstacleList = obstaclelist
+        self.wallList = walllist
+        self.gameLayout.clear_widgets()
+        self.loadLevel()
     def select_levels(self, parent):
         self.popup.dismiss()
     def select_main(self, parent):
@@ -297,104 +340,42 @@ class game_layout(Widget):
         self.loadLevel()
     def loadMenu(self, *arg):
         self.popup.open()
-    def loadLevel(self, level):
-        listy = self.levelBuilder.return_level(level) # wall, node, obstacle
+    def loadLevel(self):
         self.gameLayout.clear_widgets()
-        self.wallList = listy[0]
-        self.nodeList = listy[1]
-        self.objectList = listy[2]
-        Clock.unschedule(self.myPlayer.update)
-        self.myPlayer = Player(self.nodeList, self.obstacleList, self.wallList)
-        Clock.schedule_interval(self.myPlayer.update, 1/30.)
-        self.gameLayout.add_widget(self.myPlayer)
         for x in range(len(self.nodeList)):
             self.gameLayout.add_widget(self.nodeList[x])
         for x in range(len(self.obstacleList)):
             self.gameLayout.add_widget(self.obstacleList[x])
         for x in range(len(self.wallList)):
             self.gameLayout.add_widget(self.wallList[x])
-        self.myPlayer.restart()
     def check_finished(self, dt):
         self.finished = self.myPlayer.finished
-    def returnGame(self):
-        return self.myLayout
-class MenuScreen(Screen):
-    pass
 class GameScreen(Screen):
     pass
-class LevelScreen(Screen):
-    pass
-class GameClient(Widget):
-    def __init__(self):
-        self.level = 1
-        self.game_layout = False
-        Clock.schedule_interval(self.check_finished, 1)
-        self.gamescreen = GameScreen(name = 'game')
-        self.gamescreen.ids["gamescreen"].add_widget(game_layout(1).returnGame())
-        self.levelscreen = LevelScreen(name = 'levels')
-        self.sm = ScreenManager()
-        self.sm.add_widget(MenuScreen(name='menu'))
-        self.sm.add_widget(self.gamescreen)
-        self.sm.add_widget(self.levelscreen)
-        self.num_levels = len(levelBuilder().find_levels())
-        for level in levelBuilder().find_levels():
-            self.levelscreen.ids["levelMenu"].add_widget(Button(text = level, on_press = self.enter_level))
-        self.myMenu = GridLayout(cols = 1,orientation = "vertical", size_hint= (1,1))
-        #self.popupScroll = ScrollView(size_hint_y = None, size = (Window.width, Window.height*.9), content = self.myMenu)
-        self.popup = Popup(content = self.myMenu, title = "Menu", size_hint= (.5,1))
-
-        self.myMenu.add_widget(Button(text = "Resume", on_press = self.popup.dismiss, size_hint = (1, 1)))
-        self.myMenu.add_widget(Button(text = "Levels", on_press = self.select_levels, size_hint = (1, 1)))
-        self.myMenu.add_widget(Button(text = "Main Screen", on_press = self.select_main, size_hint = (1, 1)))
-
-        self.finish_layout = FinishLayout(size_hint = (1, 1))
-        self.finish_layout.ids["restart"].add_widget(Button(text = "Restart", on_press = self.enter_level, size_hint = (1, 1)))
-        self.finish_layout.ids["level"].add_widget(Button(text = "Levels", on_press = self.select_levels, size_hint = (1, 1)))
-        self.finish_layout.ids["next"].add_widget(Button(text = "Next", on_press = self.enter_next_level, size_hint = (1, 1)))
-
-        self.finish_popup = Popup(content = self.finish_layout, title = "Menu", size_hint= (.9,.9))
-        
-    def select_levels(self, parent):
-        Clock.unschedule(self.check_finished)
-        self.finish_popup.dismiss()
-        self.popup.dismiss()
-        self.sm.current = "levels"
-    def select_main(self, parent):
-        self.popup.dismiss()
-        self.sm.current = "menu"
-    def enter_next_level(self, level):
-        if self.level < self.num_levels:
-            self.level+=1
-        Clock.unschedule(self.check_finished)
-        self.gamescreen.ids["gamescreen"].clear_widgets()
-        self.game_layout = game_layout(self.level)
-        Clock.schedule_interval(self.check_finished, 1)
-        self.gamescreen.ids["gamescreen"].add_widget(self.game_layout.returnGame())
-        self.gamescreen.ids["gamescreen"].add_widget(Button(text = "Menu", pos = (0, Window.height*9/10), size_hint = (None, None), size = (Window.width/5, Window.height/5), on_release = self.popup.open))
-        self.sm.current = "game"
-        self.finish_popup.dismiss()
-    def enter_level(self, obj):
-        Clock.unschedule(self.check_finished)
-        self.gamescreen.ids["gamescreen"].clear_widgets()
-        if obj.text == "Restart": 
-            self.game_layout = game_layout(self.level)
-        else:
-            self.game_layout = game_layout(obj.text[obj.text.find("/"):obj.text.find(".")])
-        Clock.schedule_interval(self.check_finished, 1)
-        self.gamescreen.ids["gamescreen"].add_widget(self.game_layout.returnGame())
-        self.gamescreen.ids["gamescreen"].add_widget(Button(text = "Menu", pos = (0, Window.height*9/10), size_hint = (None, None), size = (Window.width/5, Window.height/5), on_release = self.popup.open))
-        #self.gamescreen.ids["gamescreen"].children[0].add_widget(Button(text = "Next Level",pos = (Window.width/5, Window.height*9/10), size_hint = (None, None), size = (Window.width/5, Window.height/5), on_release = self.gamescreen.ids["gamescreen"].parent.loadMenu()))
-        self.sm.current = "game"
-        self.finish_popup.dismiss()
-    def check_finished(self, dt):
-        if self.game_layout and self.game_layout.finished == True:
-            self.finish_popup.open()
-    def startGame(self):
-        return self.sm
-class FinishLayout(BoxLayout):
-    pass
+class Cube(Widget):
+    def __init__(self, level,**kwargs):
+        super(Cube, self).__init__(**kwargs)
+        self.builder = levelBuilder()
+        self.face_guide = [[3,2,1,4],[0,2,5,4],[0,3,5,1],[0,4,5,2],[0,1,5,3],[1,2,3,4]]
+        self.faces = self.builder.return_level(level) # list of lists for gamelayout (nodelist, etc.)
+        for x in range(len(self.faces)):
+            self.ids["layout" + str(x)].set_lists(self.faces[x][0], self.faces[x][1],self.faces[x][2])
+            #self.ids["layout" + str(x+1)].loadLevel()
+        self.ids["layout1"].loadLevel()
+        self.myPlayer = Player(self.faces[0][0], self.faces[0][1],self.faces[0][2])
+        self.add_widget(self.myPlayer)
+        Clock.schedule_interval(self.myPlayer.update, .05)
+        self.ids["sm"].current = "1"
+    def change_face(self, direction):
+        print self.face_guide[int(self.ids["sm"].current)][direction]
+        self.ids["sm"].current = str(self.face_guide[int(self.ids["sm"].current)][direction])
+        self.myPlayer.setPos(40,40)
+    def on_touch_down(self, key):
+        self.myPlayer.on_touch_down(key)
+    #    self.change_face(self.current_face)
+    #    self.current_face+=1
 class TestApp(App):
     def build(self):
-        return GameClient().startGame()
+        return Cube(1)
 if __name__ == '__main__':
     TestApp().run()
