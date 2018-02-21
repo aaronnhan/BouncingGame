@@ -19,8 +19,8 @@ from math import sqrt, sin, cos, atan, pi
 import sys
 from kivy.clock import Clock
 from kivy.uix.screenmanager import ScreenManager, Screen
-Window.size = (500, 400)
-
+#Window.size = (592, 288)
+#Window.size = (800, 600)
 Builder.load_string("""
 <Game_layout>:
     size_hint: (1,1)
@@ -42,26 +42,6 @@ Builder.load_string("""
             name: "1"
             Game_layout:
                 id: layout1
-        Screen:
-            id: screen_two
-            name: "2"
-            Game_layout:
-                id: layout2
-        Screen:
-            id: screen_three
-            name: "3"
-            Game_layout:
-                id: layout3
-        Screen:
-            id: screen_four
-            name: "4"
-            Game_layout:
-                id: layout4
-        Screen:
-            id: screen_five
-            name: "5"
-            Game_layout:
-                id: layout5
 <GameScreen>:
     FloatLayout:
         id:gamescreen
@@ -85,11 +65,18 @@ Builder.load_string("""
         id: node
 #        source: "background.png"
         pos: self.pos
-        size:(10,10)
+        size:root.mySize
+<Laser>:
+    Image:
+        id: laser
+        source: "red.png"
+        center: self.center
+        allow_stretch: True
+        keep_ratio: False
 <Obstacle>:
     Image:
         id: obstacle
-#        source: "object.png"
+        source: "white.jpeg"
         pos: self.pos
         size: 10,10
 <Wall>:
@@ -113,14 +100,15 @@ Builder.load_string("""
         anchor_x: "right"
         anchor_y: "bottom"
 """)
-window_ratio_y = Window.height/350.
-window_ratio_x = Window.width/500.
+#Window.size = (592, 288)
+window_ratio_y = Window.height/144.
+window_ratio_x = Window.width/296.
 
 class levelBuilder():
     def __init__(self):
         self.nodeList = []
         self.wallList = []
-        self.obstacleList = []
+        self.laserList = []
     def makeNode(self, listy):
         x = int(listy[0])
         y = int(listy[1])
@@ -133,6 +121,12 @@ class levelBuilder():
         z = int(listy[3])
         r = int(listy[4])
         return Wall(w,x,y,z,r)
+    def makeLaser(self, listy):
+        w = int(listy[0])
+        x = int(listy[1])
+        y = int(listy[2])
+        z = int(listy[3])
+        return Laser(w,x,y,z)
     def makeObstacle(self, listy):
         x = int(listy[0])
         y = int(listy[1])
@@ -167,15 +161,18 @@ class levelBuilder():
         for x in listy: #Each face; always 6
             nodelist = []
             walllist = []
-            obstaclelist = []
+            laserlist = []
             lists = x.split("|")
             for node in lists[0].split(";"):
-                nodelist.append(self.makeNode(self.string_to_list(node)))
+                if node is not "":
+                    nodelist.append(self.makeNode(self.string_to_list(node)))
             for wall in lists[1].split(";"):
-                walllist.append(self.makeWall(self.string_to_list(wall)))
-            for obstacle in lists[2].split(";"):
-                obstaclelist.append(self.makeObstacle(self.string_to_list(obstacle)))
-            returnList.append([nodelist, walllist, obstaclelist])
+                if wall is not "":
+                    walllist.append(self.makeWall(self.string_to_list(wall)))
+            for laser in lists[2].split(";"):
+                if laser is not "":
+                    laserlist.append(self.makeLaser(self.string_to_list(laser)))
+            returnList.append([nodelist, walllist, laserlist])
         return returnList
     
     def return_level(self,level):
@@ -187,27 +184,32 @@ class levelBuilder():
 
 
 class Player(Widget):
-    def __init__(self, nodelist, walllist, obstaclelist, **kwargs):
-        self.mySize = (15*window_ratio_y,15*window_ratio_y)
+    def __init__(self, nodelist, walllist, laserlist, **kwargs):
+        self.mySize = (5*window_ratio_y,5*window_ratio_y)
         super(Player, self).__init__(**kwargs)
-        self.start_center = [40,40]
+        self.start_center = [Window.width/2,Window.height/2]
         self.finishNode = None
         self.nodelist = nodelist
-        #self.finishNode = self.nodelist[-1]
-        self.obstaclelist = obstaclelist
+        self.laserlist = laserlist
         self.walllist = walllist
         self.restart()
-        if type(self.nodelist[0]) is not str:
-            self.start_center = [Window.width/10,self.nodelist[0].ids["node"].y]
+        self.node = None
+        #if type(self.nodelist[0]) is not str:
+        #    self.start_center = [Window.width/10,self.nodelist[0].ids["node"].y]
         self.finished = False
+    def set_lists(self, listy):
+        self.nodelist = listy[0]
+        self.walllist = listy[1]
+        self.laserlist = listy[2]
+        #print self.laserlist
     def update(self, dt):
-        self.updatePos()
         if not self.node:
             self.checkNode()
+        self.updatePos()
     def inBound(self):
         if self.ids["player"].center_x <= 0:
             self.parent.change_face(3)
-        elif self.ids["player"].y <= 0:
+        elif self.ids["player"].center_y <= 0:
             self.parent.change_face(2)
         elif self.ids["player"].center_x >= Window.width:
             self.parent.change_face(1)
@@ -220,13 +222,15 @@ class Player(Widget):
             self.ids["player"].y +=self.velocity[1]*window_ratio_y
         else:
             self.angle += .15*self.direction
-            self.ids["player"].center_x = self.node.ids["node"].center_x + self.node.radius*window_ratio_y*cos(self.angle)
-            self.ids["player"].center_y = self.node.ids["node"].center_y + self.node.radius*window_ratio_y*sin(self.angle)
+            self.ids["player"].center_x = self.node.ids["node"].center_x + self.node.radius*cos(self.angle)
+            self.ids["player"].center_y = self.node.ids["node"].center_y + self.node.radius*sin(self.angle)
     def calcAngle(self):
         if self.node == self.finishNode:
             self.finished = True
         ydif = (float)(self.node.ids["node"].center_y - self.ids["player"].center_y)
         xdif = (float)(self.node.ids["node"].center_x - self.ids["player"].center_x)
+        if xdif == 0:
+            xdif = 1
         angle = atan(ydif/xdif)
         if self.node.ids["node"].center_x > self.ids["player"].center_x:
             angle += pi
@@ -248,10 +252,14 @@ class Player(Widget):
         for x in range(len(self.nodelist)):
             distance = sqrt(pow(self.ids["player"].center_y - self.nodelist[x].ids["node"].center_y, 2) + 
                     pow(self.ids["player"].center_x - self.nodelist[x].ids["node"].center_x, 2))
-            if (distance <= self.nodelist[x].radius):
+            if (distance <= self.nodelist[x].radius and self.nodelist[x] != self.last_node):
                 self.node = self.nodelist[x]
-        for x in range(len(self.obstaclelist)):
-            if self.obstaclelist[x].ids["obstacle"].collide_point(self.ids["player"].x, self.ids["player"].y):
+                self.last_node = self.nodelist[x]
+        print (self.ids["player"].x, self.ids["player"].y)
+        for x in range(len(self.laserlist)):
+            if self.laserlist[x].ids["laser"].collide_point(self.ids["player"].x, self.ids["player"].y):
+                self.parent.ids["sm"].current = "0"
+                
                 self.restart()
         for x in range(len(self.walllist)):
             if self.walllist[x].ids["wall"].collide_point(self.ids["player"].x, self.ids["player"].y) and (time.time()-self.lastWall[1]>.1): # COLLIDE
@@ -266,7 +274,6 @@ class Player(Widget):
         if self.node:
             self.angle = self.calcAngle()
     def on_touch_down(self, key):
-        print self.parent
         #if  self.parent.parent.children[0].collide_point(key.x, key.y): #BUTTON DETECTION
             #return None #CAN CHANGE TO IF
         if self.node:
@@ -282,36 +289,53 @@ class Player(Widget):
                 xDir = 1
             else: 
                 xDir = -1
-            self.velocity = [abs(12*x/ratio)*xDir, abs(12*y/ratio)*yDir]
+            self.velocity = [abs(3*x/ratio)*xDir, abs(3*y/ratio)*yDir]
             self.node = None
     def restart(self, *args):
+        self.last_node = None
         self.node = None
         self.angle = None
         self.speed = 12
-        self.velocity = [12.,0]
+        self.velocity = [3.,0]
         self.ids["player"].center = self.start_center
-        self.direction = 0
+        self.direction = 1
         self.lastWall = [None, 0]
-    def setPos(self, x, y):
+        if self.parent:
+            self.set_lists(self.parent.faces[int(self.parent.ids["sm"].current)])
+    def setCenter(self, x, y):
         self.ids["player"].center = (x,y)
 class Node(Widget):
     def __init__(self,x,y,radius, **kwargs):
-        self.mySize = (10*window_ratio_x,10*window_ratio_y)
+        if window_ratio_x > window_ratio_y:
+            self.mySize = (4*window_ratio_y,4*window_ratio_y)
+        else:
+            self.mySize = (4*window_ratio_x,4*window_ratio_x)
         super(Node, self).__init__(**kwargs)
         self.ids["node"].center = (x*window_ratio_x,y*window_ratio_y)
-        self.radius = radius*window_ratio_y
+        if window_ratio_y > window_ratio_x:
+            self.radius = radius*window_ratio_x
+        else:
+            self.radius = radius*window_ratio_y
         self.used = False
-class Obstacle(Widget):
-    def __init__(self,x, y, **kwargs):
-        super(Obstacle, self).__init__(**kwargs)
-        self.ids["obstacle"].center = (x*window_ratio_x, y*window_ratio_y)
+#class Obstacle(Widget):
+#    def __init__(self,x, y, **kwargs):
+#        super(Obstacle, self).__init__(**kwargs)
+#        self.ids["obstacle"].center = (x*window_ratio_x, y*window_ratio_y)
 class Wall(Widget):
     def __init__(self,x, y, size_x, size_y, angle, **kwargs):
         self.angle = angle
         super(Wall, self).__init__(**kwargs)
         self.center = (x*window_ratio_x, y*window_ratio_y)
+        self.ids["wall"].center = self.center
         self.ids["wall"].width = size_x*window_ratio_x
         self.ids["wall"].height = size_y*window_ratio_y
+class Laser(Widget):
+    def __init__(self,x, y, size_x, size_y, **kwargs):
+        super(Laser, self).__init__(**kwargs)
+        self.center = (x*window_ratio_x, y*window_ratio_y)
+        self.ids["laser"].center = self.center
+        self.ids["laser"].width = size_x*window_ratio_x
+        self.ids["laser"].height = size_y*window_ratio_y
 
 class Game_layout(Widget):
     def __init__(self, **kwargs):
@@ -319,15 +343,15 @@ class Game_layout(Widget):
         self.finished = False
         self.levelBuilder = levelBuilder()
         self.nodeList = []
-        self.obstacleList = []
+        self.laserList = []
         self.wallList = []
         self.gameLayout = FloatLayout(size_hint = (None, None))
         self.add_widget(self.gameLayout)
     def get_lists(self):
-        return [self.nodeList, self.wallList, self.obstacleList]
-    def set_lists(self, nodelist, walllist, obstaclelist):
+        return [self.nodeList, self.wallList, self.laserList]
+    def set_lists(self, nodelist, walllist, laserlist):
         self.nodeList = nodelist
-        self.obstacleList = obstaclelist
+        self.laserList = laserlist
         self.wallList = walllist
         self.gameLayout.clear_widgets()
         self.loadLevel()
@@ -344,8 +368,8 @@ class Game_layout(Widget):
         self.gameLayout.clear_widgets()
         for x in range(len(self.nodeList)):
             self.gameLayout.add_widget(self.nodeList[x])
-        for x in range(len(self.obstacleList)):
-            self.gameLayout.add_widget(self.obstacleList[x])
+        for x in range(len(self.laserList)):
+            self.gameLayout.add_widget(self.laserList[x])
         for x in range(len(self.wallList)):
             self.gameLayout.add_widget(self.wallList[x])
     def check_finished(self, dt):
@@ -358,18 +382,31 @@ class Cube(Widget):
         self.builder = levelBuilder()
         self.face_guide = [[3,2,1,4],[0,2,5,4],[0,3,5,1],[0,4,5,2],[0,1,5,3],[1,2,3,4]]
         self.faces = self.builder.return_level(level) # list of lists for gamelayout (nodelist, etc.)
-        for x in range(len(self.faces)):
+        for x in range(2):
             self.ids["layout" + str(x)].set_lists(self.faces[x][0], self.faces[x][1],self.faces[x][2])
+        for x in self.faces:
+            print x, "\n"
             #self.ids["layout" + str(x+1)].loadLevel()
-        self.ids["layout1"].loadLevel()
+        self.ids["layout0"].loadLevel()
         self.myPlayer = Player(self.faces[0][0], self.faces[0][1],self.faces[0][2])
+        self.myPlayer.start_center = self.myPlayer.nodelist[0].ids["node"].center
+        self.myPlayer.ids["player"].center = self.myPlayer.start_center
         self.add_widget(self.myPlayer)
-        Clock.schedule_interval(self.myPlayer.update, .05)
-        self.ids["sm"].current = "1"
+        Clock.schedule_interval(self.myPlayer.update, 1/40.)
+        self.dir_list = ["down","left","up","right"]
+        
     def change_face(self, direction):
-        print self.face_guide[int(self.ids["sm"].current)][direction]
-        self.ids["sm"].current = str(self.face_guide[int(self.ids["sm"].current)][direction])
-        self.myPlayer.setPos(40,40)
+        self.ids["sm"].transition.direction = self.dir_list[direction]
+        self.ids["sm"].current = str(1- int(self.ids["sm"].current))
+        self.myPlayer.set_lists(self.faces[int(self.ids["sm"].current)])
+        if direction == 0:
+            self.myPlayer.setCenter(self.myPlayer.ids["player"].center_x, self.myPlayer.ids["player"].height/2)
+        if direction == 1:
+            self.myPlayer.setCenter(self.myPlayer.ids["player"].width/2, self.myPlayer.ids["player"].center_y)
+        if direction == 2:
+            self.myPlayer.setCenter(self.myPlayer.ids["player"].center_x, Window.height-self.myPlayer.ids["player"].height/2)
+        if direction == 3:
+            self.myPlayer.setCenter(Window.width-self.myPlayer.ids["player"].width/2, self.myPlayer.ids["player"].center_y)
     def on_touch_down(self, key):
         self.myPlayer.on_touch_down(key)
     #    self.change_face(self.current_face)
