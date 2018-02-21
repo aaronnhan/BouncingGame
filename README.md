@@ -7,10 +7,10 @@ The purpose of this is to create a working application and hopefully upload it t
 Bouncing Game has an out-of-client customizable level system. The format is below
 
     <level>.txt
-#Layout 1
-<Node_x, Node_y, Node_radius>|<Wall_x, Wall_y, Wall_width, Wall_height, Wall_angle>|<Laser_x, Laser_y, Laser_width, Laser_height>
-#Layout 2
-<Node_x, Node_y, Node_radius>|<Wall_x, Wall_y, Wall_width, Wall_height, Wall_angle>|<Laser_x, Laser_y, Laser_width, Laser_height>
+    #Layout 1
+    <Node_x, Node_y, Node_radius>|<Wall_x, Wall_y, Wall_width, Wall_height, Wall_angle>|<Laser_x, Laser_y, Laser_width, Laser_height>
+    #Layout 2
+    <Node_x, Node_y, Node_radius>|<Wall_x, Wall_y, Wall_width, Wall_height, Wall_angle>|<Laser_x, Laser_y, Laser_width, Laser_height>
 
 
 Special thanks to:
