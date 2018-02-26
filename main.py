@@ -19,9 +19,70 @@ from math import sqrt, sin, cos, atan, pi
 import sys
 from kivy.clock import Clock
 from kivy.uix.screenmanager import ScreenManager, Screen
-#Window.size = (592, 288)
-#Window.size = (800, 600)
+from kivy.metrics import dp
+#Window.size = (800, 400)
+#Window.size = (100, 288)
 Builder.load_string("""
+<Menu>:
+    ScreenManager:
+        size: root.size
+        id: sm
+        Screen:
+            id: title
+            name: "title"
+            size: root.size
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "bottom"
+                BoxLayout:
+                    size_hint: (.75,.3)
+                    orientation: "vertical"
+                    Button:
+                        size_hint: (1,.5)
+                        text: "Play"
+                        on_press: root.ids["sm"].current = "levels"
+                    Button:
+                        size_hint: (1,.5)
+                        text: "Credits"
+                        on_press: root.ids["sm"].current = "credits"
+        Screen:
+            id: levels
+            name: "levels"
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "bottom"
+                ScrollView:
+                    size_hint: (.75, 1)
+                    BoxLayout:
+                        size_hint_y: None
+                        orientation: "vertical"
+                        id:box
+        Screen:
+            id: credits
+            name: "credits"
+            AnchorLayout:
+                size_hint: (1,1)
+                anchor_x: "center"
+                anchor_y: "center"
+                BoxLayout:
+                    orientation: "vertical"
+                    Label:
+                        text_size: self.size
+                        halign: "center"
+                        valign: "center"
+                        size_hint: (1,.8)
+                        text: "This game is for those that find joy in discovery.\\n\\nMany Thanks to:\\nBrenda Kosbab\\nDr. Yuanjie Li and Professor Songwu Lu\\nFriends and family that have supported me\\nYou for playing this game!\\n\\nI hope you enjoy this game as much as I enjoyed making it. \\nAaron Nhan\\n"
+                    Button:
+                        text: "Back"
+                        size_hint: (1,.2)
+                        on_press: root.ids["sm"].current = "title"
+        Screen:
+            id:game
+            name: "game"
+            AnchorLayout:
+                id: back_butt
+                anchor_x: "center"
+                anchor_y: "bottom"
 <Game_layout>:
     size_hint: (1,1)
     FloatLayout:
@@ -45,14 +106,14 @@ Builder.load_string("""
 <GameScreen>:
     FloatLayout:
         id:gamescreen
-<LevelScreen>:
-    AnchorLayout:
-        anchor_x: "center"
-        anchor_y: "top"
-        BoxLayout:
-            id: levelMenu
-            orientation: "vertical"
-            size_hint: (.5, .2)
+#<LevelScreen>:
+#    AnchorLayout:
+#        anchor_x: "center"
+#        anchor_y: "top"
+#        BoxLayout:
+#            id: levelMenu
+#            orientation: "vertical"
+#            size_hint: (.5, .2)
 <Player>:
     Image:
         id: player
@@ -100,9 +161,9 @@ Builder.load_string("""
         anchor_x: "right"
         anchor_y: "bottom"
 """)
-#Window.size = (592, 288)
-window_ratio_y = Window.height/144.
-window_ratio_x = Window.width/296.
+Window.size = (592, 288)
+ratio_y = Window.height/144.
+ratio_x = Window.width/296.
 
 class levelBuilder():
     def __init__(self):
@@ -185,10 +246,10 @@ class levelBuilder():
 
 class Player(Widget):
     def __init__(self, nodelist, walllist, laserlist, **kwargs):
-        self.mySize = (5*window_ratio_y,5*window_ratio_y)
+        self.mySize = (7*ratio_y,7*ratio_y)
         super(Player, self).__init__(**kwargs)
         self.start_center = [Window.width/2,Window.height/2]
-        self.finishNode = None
+        self.finish_node = None
         self.nodelist = nodelist
         self.laserlist = laserlist
         self.walllist = walllist
@@ -201,7 +262,6 @@ class Player(Widget):
         self.nodelist = listy[0]
         self.walllist = listy[1]
         self.laserlist = listy[2]
-        #print self.laserlist
     def update(self, dt):
         if not self.node:
             self.checkNode()
@@ -218,15 +278,13 @@ class Player(Widget):
     def updatePos(self):
         self.inBound()
         if self.node == None:
-            self.ids["player"].x +=self.velocity[0]*window_ratio_x
-            self.ids["player"].y +=self.velocity[1]*window_ratio_y
+            self.ids["player"].x +=self.velocity[0]*ratio_x
+            self.ids["player"].y +=self.velocity[1]*ratio_y
         else:
             self.angle += .15*self.direction
             self.ids["player"].center_x = self.node.ids["node"].center_x + self.node.radius*cos(self.angle)
             self.ids["player"].center_y = self.node.ids["node"].center_y + self.node.radius*sin(self.angle)
     def calcAngle(self):
-        if self.node == self.finishNode:
-            self.finished = True
         ydif = (float)(self.node.ids["node"].center_y - self.ids["player"].center_y)
         xdif = (float)(self.node.ids["node"].center_x - self.ids["player"].center_x)
         if xdif == 0:
@@ -255,7 +313,9 @@ class Player(Widget):
             if (distance <= self.nodelist[x].radius and self.nodelist[x] != self.last_node):
                 self.node = self.nodelist[x]
                 self.last_node = self.nodelist[x]
-        print (self.ids["player"].x, self.ids["player"].y)
+                if self.node == self.finish_node:
+                    self.finished = True
+                    print "Finished"
         for x in range(len(self.laserlist)):
             if self.laserlist[x].ids["laser"].collide_point(self.ids["player"].x, self.ids["player"].y):
                 self.parent.ids["sm"].current = "0"
@@ -306,16 +366,12 @@ class Player(Widget):
         self.ids["player"].center = (x,y)
 class Node(Widget):
     def __init__(self,x,y,radius, **kwargs):
-        if window_ratio_x > window_ratio_y:
-            self.mySize = (4*window_ratio_y,4*window_ratio_y)
-        else:
-            self.mySize = (4*window_ratio_x,4*window_ratio_x)
+        self.mySize = (4*ratio_x, 4*ratio_y)
         super(Node, self).__init__(**kwargs)
-        self.ids["node"].center = (x*window_ratio_x,y*window_ratio_y)
-        if window_ratio_y > window_ratio_x:
-            self.radius = radius*window_ratio_x
-        else:
-            self.radius = radius*window_ratio_y
+        self.radius = radius*ratio_x
+        print "ratios: " + str((x*ratio_x, y*ratio_y))
+        self.ids["node"].center = (x*ratio_x, y*ratio_y)
+        print "node center: " + str(self.ids["node"].center)
         self.used = False
 #class Obstacle(Widget):
 #    def __init__(self,x, y, **kwargs):
@@ -325,17 +381,18 @@ class Wall(Widget):
     def __init__(self,x, y, size_x, size_y, angle, **kwargs):
         self.angle = angle
         super(Wall, self).__init__(**kwargs)
-        self.center = (x*window_ratio_x, y*window_ratio_y)
+        self.center = (x*ratio_x, y*ratio_y)
         self.ids["wall"].center = self.center
-        self.ids["wall"].width = size_x*window_ratio_x
-        self.ids["wall"].height = size_y*window_ratio_y
+        self.ids["wall"].width = size_x*ratio_x
+        self.ids["wall"].height = size_y*ratio_y
 class Laser(Widget):
     def __init__(self,x, y, size_x, size_y, **kwargs):
         super(Laser, self).__init__(**kwargs)
-        self.center = (x*window_ratio_x, y*window_ratio_y)
-        self.ids["laser"].center = self.center
-        self.ids["laser"].width = size_x*window_ratio_x
-        self.ids["laser"].height = size_y*window_ratio_y
+        self.ids["laser"].width = size_x*ratio_x
+        self.ids["laser"].height = ratio_y*size_y
+        print "laser ratios: " + str((x*ratio_x, y*ratio_y))
+        self.ids["laser"].center = (x*ratio_x, y*ratio_y)
+        print "laser center: " + str(self.ids["laser"].center)
 
 class Game_layout(Widget):
     def __init__(self, **kwargs):
@@ -372,8 +429,8 @@ class Game_layout(Widget):
             self.gameLayout.add_widget(self.laserList[x])
         for x in range(len(self.wallList)):
             self.gameLayout.add_widget(self.wallList[x])
-    def check_finished(self, dt):
-        self.finished = self.myPlayer.finished
+    #def check_finished(self, dt):
+    #    self.finished = self.myPlayer.finished
 class GameScreen(Screen):
     pass
 class Cube(Widget):
@@ -384,16 +441,21 @@ class Cube(Widget):
         self.faces = self.builder.return_level(level) # list of lists for gamelayout (nodelist, etc.)
         for x in range(2):
             self.ids["layout" + str(x)].set_lists(self.faces[x][0], self.faces[x][1],self.faces[x][2])
-        for x in self.faces:
-            print x, "\n"
+       # for x in self.faces:
             #self.ids["layout" + str(x+1)].loadLevel()
         self.ids["layout0"].loadLevel()
         self.myPlayer = Player(self.faces[0][0], self.faces[0][1],self.faces[0][2])
         self.myPlayer.start_center = self.myPlayer.nodelist[0].ids["node"].center
+        self.myPlayer.finish_node = self.myPlayer.nodelist[-1]
         self.myPlayer.ids["player"].center = self.myPlayer.start_center
         self.add_widget(self.myPlayer)
-        Clock.schedule_interval(self.myPlayer.update, 1/40.)
+        Clock.schedule_interval(self.update, 1/40.)
         self.dir_list = ["down","left","up","right"]
+    def update(self, dt):
+        self.myPlayer.update(dt)
+        if self.myPlayer.finished:
+            Clock.unschedule(self.update)
+            
         
     def change_face(self, direction):
         self.ids["sm"].transition.direction = self.dir_list[direction]
@@ -409,10 +471,26 @@ class Cube(Widget):
             self.myPlayer.setCenter(Window.width-self.myPlayer.ids["player"].width/2, self.myPlayer.ids["player"].center_y)
     def on_touch_down(self, key):
         self.myPlayer.on_touch_down(key)
-    #    self.change_face(self.current_face)
-    #    self.current_face+=1
+        print "TOUCH"
+
+    def on_touch_move(self, touch):
+        print touch.spos
+        self.parent.parent.parent.back()
+class Menu(Widget):
+    def __init__(self,**kwargs):
+        super(Menu, self).__init__(**kwargs)
+        for x in range(len(levelBuilder().find_levels())):
+            self.ids["box"].add_widget(Button(text = str(x+1), on_press = self.press))
+        self.ids["box"].height = len(self.ids["box"].children)*self.ids["box"].children[0].height
+    def press(self, obj):
+        self.ids["game"].clear_widgets()
+        self.ids["game"].add_widget(Cube(int(obj.text)))
+        self.ids["sm"].current = "game"
+    def back(self):
+        self.ids["sm"].current = "title"
 class TestApp(App):
     def build(self):
-        return Cube(1)
+        return Menu()
+        #return Cube(1)
 if __name__ == '__main__':
     TestApp().run()
