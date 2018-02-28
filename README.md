@@ -8,9 +8,9 @@ Bouncing Game has an out-of-client customizable level system. The format is belo
 
     <level>.txt
     #Layout 1
-    <Node_x, Node_y, Node_radius>|<Wall_x, Wall_y, Wall_width, Wall_height, Wall_angle>|<Laser_x, Laser_y, Laser_width, Laser_height>
+    <Node_center_x, Node_center_y, Node_radius>|<Wall_center_x, Wall_center_y, Wall_width, Wall_height, Wall_angle>|<Laser_center_x, Laser_center_y, Laser_width, Laser_height>
     #Layout 2
-    <Node_x, Node_y, Node_radius>|<Wall_x, Wall_y, Wall_width, Wall_height, Wall_angle>|<Laser_x, Laser_y, Laser_width, Laser_height>
+    <Node_center_x, Node_center_y, Node_radius>|<Wall_center_x, Wall_center_y, Wall_width, Wall_height, Wall_angle>|<Laser_center_x, Laser_center_y, Laser_width, Laser_height>
 
 
 Special thanks to:
