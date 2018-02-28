@@ -10,7 +10,6 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 import time
 from kivy.app import App
-#from kivy.clock import Clock
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.widget import Widget
@@ -19,7 +18,6 @@ from math import sqrt, sin, cos, atan, pi
 import sys
 from kivy.clock import Clock
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.metrics import dp
 #Window.size = (800, 400)
 #Window.size = (100, 288)
 Builder.load_string("""
@@ -83,6 +81,21 @@ Builder.load_string("""
                 id: back_butt
                 anchor_x: "center"
                 anchor_y: "bottom"
+<FinishLayout>:
+    size_hint: (1,1)
+    pos: root.pos
+    AnchorLayout:
+        id: restart
+        anchor_x: "left"
+        anchor_y: "bottom"
+    AnchorLayout:
+        id: level
+        anchor_x: "center" 
+        anchor_y: "bottom"
+    AnchorLayout:
+        id: next
+        anchor_x: "right"
+        anchor_y: "bottom"
 <Game_layout>:
     size_hint: (1,1)
     FloatLayout:
@@ -106,14 +119,6 @@ Builder.load_string("""
 <GameScreen>:
     FloatLayout:
         id:gamescreen
-#<LevelScreen>:
-#    AnchorLayout:
-#        anchor_x: "center"
-#        anchor_y: "top"
-#        BoxLayout:
-#            id: levelMenu
-#            orientation: "vertical"
-#            size_hint: (.5, .2)
 <Player>:
     Image:
         id: player
@@ -145,26 +150,10 @@ Builder.load_string("""
         id: wall
 #        source: "line.png"
         pos: self.pos
-<FinishLayout>:
-    size_hint: (1,1)
-    pos: root.pos
-    AnchorLayout:
-        id: restart
-        anchor_x: "left"
-        anchor_y: "bottom"
-    AnchorLayout:
-        id: level
-        anchor_x: "center" 
-        anchor_y: "bottom"
-    AnchorLayout:
-        id: next
-        anchor_x: "right"
-        anchor_y: "bottom"
 """)
-Window.size = (592, 288)
+#Window.size = (592, 288)
 ratio_y = Window.height/144.
 ratio_x = Window.width/296.
-
 class levelBuilder():
     def __init__(self):
         self.nodeList = []
@@ -200,15 +189,16 @@ class levelBuilder():
         levels.sort()
         return levels
 
-    def returnText(self, filepath): # makes list of [object, parameters]
+    def returnText(self, filepath):
         try:
             f = open(filepath)
             text = f.read()
             f.close()
             myList = []
-            for line in text.split("\n"):
+            #for line in text.split("\n"):
+            for x in range(2):
                 smallList = []
-                myList.append(line)
+                myList.append(text.split("\n")[x])
             return myList
         except IOError:
             return
@@ -246,7 +236,10 @@ class levelBuilder():
 
 class Player(Widget):
     def __init__(self, nodelist, walllist, laserlist, **kwargs):
-        self.mySize = (7*ratio_y,7*ratio_y)
+        if ratio_y > ratio_x:
+            self.mySize = (7*ratio_x,7*ratio_x)
+        else:
+            self.mySize = (7*ratio_y,7*ratio_y)
         super(Player, self).__init__(**kwargs)
         self.start_center = [Window.width/2,Window.height/2]
         self.finish_node = None
@@ -369,9 +362,7 @@ class Node(Widget):
         self.mySize = (4*ratio_x, 4*ratio_y)
         super(Node, self).__init__(**kwargs)
         self.radius = radius*ratio_x
-        print "ratios: " + str((x*ratio_x, y*ratio_y))
         self.ids["node"].center = (x*ratio_x, y*ratio_y)
-        print "node center: " + str(self.ids["node"].center)
         self.used = False
 #class Obstacle(Widget):
 #    def __init__(self,x, y, **kwargs):
@@ -381,18 +372,15 @@ class Wall(Widget):
     def __init__(self,x, y, size_x, size_y, angle, **kwargs):
         self.angle = angle
         super(Wall, self).__init__(**kwargs)
-        self.center = (x*ratio_x, y*ratio_y)
-        self.ids["wall"].center = self.center
         self.ids["wall"].width = size_x*ratio_x
-        self.ids["wall"].height = size_y*ratio_y
+        self.ids["wall"].height = ratio_y*size_y
+        self.ids["wall"].center = (x*ratio_x, y*ratio_y)
 class Laser(Widget):
     def __init__(self,x, y, size_x, size_y, **kwargs):
         super(Laser, self).__init__(**kwargs)
         self.ids["laser"].width = size_x*ratio_x
         self.ids["laser"].height = ratio_y*size_y
-        print "laser ratios: " + str((x*ratio_x, y*ratio_y))
         self.ids["laser"].center = (x*ratio_x, y*ratio_y)
-        print "laser center: " + str(self.ids["laser"].center)
 
 class Game_layout(Widget):
     def __init__(self, **kwargs):
@@ -455,8 +443,22 @@ class Cube(Widget):
         self.myPlayer.update(dt)
         if self.myPlayer.finished:
             Clock.unschedule(self.update)
-            
-        
+            self.finish_layout = BoxLayout()
+            self.finish_layout.add_widget(Button(text = "Restart", on_press = self.restart_level, size_hint = (1, 1)))
+            self.finish_layout.add_widget(Button(text = "Levels", on_press = self.select_level, size_hint = (1, 1)))
+            self.finish_layout.add_widget(Button(text = "Next", on_press = self.next_level, size_hint = (1, 1)))
+            self.finish_popup = Popup(content = self.finish_layout, title = "Menu", size_hint= (.9,.9))
+            self.finish_popup.open()
+    def restart_level(self, obj):
+        self.finish_popup.dismiss()
+        self.parent.parent.parent.restart_level()
+    def select_level(self, obj):
+        self.finish_popup.dismiss()
+        self.parent.parent.parent.select_level()
+    def next_level(self, obj):
+        self.finish_popup.dismiss()
+        self.parent.parent.parent.next_level()
+
     def change_face(self, direction):
         self.ids["sm"].transition.direction = self.dir_list[direction]
         self.ids["sm"].current = str(1- int(self.ids["sm"].current))
@@ -469,28 +471,39 @@ class Cube(Widget):
             self.myPlayer.setCenter(self.myPlayer.ids["player"].center_x, Window.height-self.myPlayer.ids["player"].height/2)
         if direction == 3:
             self.myPlayer.setCenter(Window.width-self.myPlayer.ids["player"].width/2, self.myPlayer.ids["player"].center_y)
-    def on_touch_down(self, key):
-        self.myPlayer.on_touch_down(key)
-        print "TOUCH"
+    def on_touch_down(self, touch):
+        if touch.is_double_tap:
+            self.parent.parent.parent.back()
+        else:
+            self.myPlayer.on_touch_down(touch)
 
-    def on_touch_move(self, touch):
-        print touch.spos
-        self.parent.parent.parent.back()
 class Menu(Widget):
     def __init__(self,**kwargs):
         super(Menu, self).__init__(**kwargs)
         for x in range(len(levelBuilder().find_levels())):
             self.ids["box"].add_widget(Button(text = str(x+1), on_press = self.press))
         self.ids["box"].height = len(self.ids["box"].children)*self.ids["box"].children[0].height
+        self.current_level = 0
     def press(self, obj):
         self.ids["game"].clear_widgets()
         self.ids["game"].add_widget(Cube(int(obj.text)))
+        self.current_level = int(obj.text)
         self.ids["sm"].current = "game"
     def back(self):
         self.ids["sm"].current = "title"
+    def restart_level(self):
+        self.ids["game"].clear_widgets()
+        self.ids["game"].add_widget(Cube(self.current_level))
+    def select_level(self):
+        self.ids["sm"].current = "levels"
+    def next_level(self):
+        self.current_level +=1
+        if self.current_level > len(levelBuilder().find_levels()):
+            self.current_level = 1
+        self.ids["game"].clear_widgets()
+        self.ids["game"].add_widget(Cube(self.current_level))
 class TestApp(App):
     def build(self):
         return Menu()
-        #return Cube(1)
 if __name__ == '__main__':
     TestApp().run()
