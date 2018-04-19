@@ -32,13 +32,13 @@ Builder.load_string("""
             Image: 
                 keep_ratio: False
                 allow_stretch: True
-                source: "dirt.png"
+                source: "images/black.png"
             AnchorLayout:
                 anchor_x: "center"
                 anchor_y: "top"
                 Image:
                     size_hint: (1,.6)
-                    source: "menu.png"
+                    source: "images/supercube.png"
                     center: (root.width/2, root.height/2)
                     keep_ratio: False
             AnchorLayout:
@@ -58,15 +58,9 @@ Builder.load_string("""
         Screen:
             id: levels
             name: "levels"
-            AnchorLayout:
-                anchor_x: "center"
-                anchor_y: "bottom"
+            BoxLayout:
                 ScrollView:
-                    size_hint: (.75, 1)
-                    BoxLayout:
-                        size_hint_y: None
-                        orientation: "vertical"
-                        id: box
+                    id: box
         Screen:
             id: credits
             name: "credits"
@@ -96,7 +90,7 @@ Builder.load_string("""
         Screen:
             name: "white"
             Image:
-                source: "white.jpeg"
+                source: "images/white.jpeg"
                 allow_stretch: True
                 keep_ratio: False
         Screen:
@@ -160,7 +154,7 @@ Builder.load_string("""
     Image:
         id: player
         size_hint: (.1, .1)
-        source: "boy.png"
+        source: "images/boy.png"
         allow_stretch: True
         keep_ratio: False
         pos: self.pos
@@ -176,14 +170,14 @@ Builder.load_string("""
 <Laser>:
     Image:
         id: laser
-        source: "red.png"
+        source: "images/red.png"
         center: self.center
         allow_stretch: True
         keep_ratio: False
 <Obstacle>:
     Image:
         id: obstacle
-        source: "white.jpeg"
+        source: "images/white.jpeg"
         pos: self.pos
         size: 10,10
 <Wall>:
@@ -204,7 +198,7 @@ Builder.load_string("""
             keep_ratio: False
             allow_stretch: True
             myRotation: 45
-            source: "boy.png"
+            source: "images/boy.png"
             canvas.before:
                 PushMatrix
                 Rotate:
@@ -396,18 +390,25 @@ class Player(Widget):
         #if  self.parent.parent.children[0].collide_point(key.x, key.y): #BUTTON DETECTION
             #return None #CAN CHANGE TO IF
         if self.node:
-            lAngle = self.angle+(pi/2)
+            lAngle = self.angle + (pi/2.)*self.direction
             x = self.node.radius*cos(lAngle)
             y = self.node.radius*sin(lAngle)
             ratio = sqrt(pow(x, 2) + pow(y,2))
-            if ((int)(lAngle/pi))%2 == 0: # no idea how this works
-                yDir = 1
-            else:
-                yDir = -1
-            if (int)((lAngle+pi/2)/pi)%2 == 0: # 1 + 3: no idea how this works
-                xDir = 1
-            else: 
-                xDir = -1
+            if self.ids["player"].center_x<self.node.ids["node"].center_x: # 2+3
+                if self.ids["player"].center_y>self.node.ids["node"].center_y: #2
+                    xDir = -1*self.direction
+                    yDir = -1*self.direction
+                else: #3
+                    xDir = self.direction
+                    yDir = -1*self.direction
+            else: #1+4
+                if self.ids["player"].center_y>self.node.ids["node"].center_y:#1
+                    xDir = -1*self.direction
+                    yDir = self.direction
+                else: #4
+                    yDir = self.direction
+                    xDir = self.direction
+
             self.velocity = [abs(2*x/ratio)*xDir, abs(2*y/ratio)*yDir]
             self.node = None
     def restart(self, *args):
@@ -432,13 +433,11 @@ class Node(Widget):
         self.used = False
     def transform(self, img):
         if img == "end":
-            hole = Image(center = self.ids["node"].center, source = "hole.png")
-            #self.ids["node"].source = "hole.png"
-            self.parent.add_widget(hole)
+            self.ids["node"].source = "images/gold.jpg"
         if img == "current":
-            self.ids["node"].source = "box.png"
+            self.ids["node"].source = "images/box.png"
         if img == "revert":
-            self.ids["node"].source = "white.jpeg"
+            self.ids["node"].source = "images/white.jpeg"
 class Wall(Widget):
     def __init__(self,x, y, size_x, size_y, angle, **kwargs):
         self.angle = angle
@@ -446,12 +445,12 @@ class Wall(Widget):
         self.ids["wall"].width = size_x*ratio_x
         self.ids["wall"].height = ratio_y*size_y
         self.ids["wall"].center = (x*ratio_x, y*ratio_y)
-        self.ids["wall"].source = "white.jpeg"
+        self.ids["wall"].source = "images/white.jpeg"
         self.ids["wall"].keep_ratio = False
         self.ids["wall"].allow_stretch = True
         with self.canvas:
             Color(.4, .4, .4, 1)
-            texture = CoreImage("box.png").texture
+            texture = CoreImage("images/box.png").texture
             texture.wrap = 'repeat'
             #nx = float(self.width) / texture.width * ratio_x
             #ny = float(self.height) / texture.height * ratio_y
@@ -537,7 +536,7 @@ class Cube(Widget):
             with open("current.txt","r") as file: 
                 self.level_holder = int(file.read())
                 file.close()
-            if  self.level_holder < self.level:
+            if  self.level_holder < self.level and self.level is not 7:
                 with open("current.txt", "w") as file:
                     file.write(str(self.level))
                     self.parent.parent.parent.unlocked_level = self.level
@@ -572,34 +571,40 @@ class Cube(Widget):
 
 class Menu(Widget):
     def __init__(self,**kwargs):
+        self.window_height = Window.height
         super(Menu, self).__init__(**kwargs)
-        self.ids["letter"].text = """[color=000000]Dear Son\n
-                If you're reading this, I'm glad you got this message.\n
-                As I was taking my morning stroll, I fell down 15 consecutive holes.\n
-                My vision isn't what it used to be.\n
-                I would be much obliged if you could rescue me before dinner.\n
-                Love, Dad"""
-        self.ids["letter_screen"].add_widget(Button(background_color = (1,0,0,0), on_release = partial(self.press_setup2, 1)))
+        #self.ids["letter"].text = """[color=000000]Dear Son\n
+        #        If you're reading this, I'm glad you got this message.\n
+        #        As I was taking my morning stroll, I fell down 15 consecutive holes.\n
+        #        My vision isn't what it used to be.\n
+        #        I would be much obliged if you could rescue me before dinner.\n
+        #        Love, Dad"""
+        #self.ids["letter_screen"].add_widget(Button(background_color = (1,0,0,0), on_release = partial(self.press_setup2, 1)))
         with open("current.txt","r") as file:
             self.unlocked_level = int(file.read())
             file.close()
         self.make_menu()
-        self.ids["box"].height = len(self.ids["box"].children)*self.ids["box"].children[0].height
+        #self.ids["box"].height = len(self.ids["box"].children)*self.ids["box"].children[0].height
+        #print "children height: ", self.ids["box"].children[0].height
+        #print "height: ", self.ids["box"].height
         self.current_level = 0
     def make_menu(self):
         self.ids["box"].clear_widgets()
-        print self.unlocked_level
+        myLayout = GridLayout(cols = 1, size_hint_y = None)
+        myLayout.height = Window.height/4*(self.unlocked_level+1)
         for x in range(self.unlocked_level+1):
-            self.ids["box"].add_widget(Button(text = str(x+1), on_release = self.press))
+            if x is not 7:
+                myLayout.add_widget(Button(text = str(x+1), on_release = self.press))
+        self.ids["box"].add_widget(myLayout)
     def press(self, obj):
         self.ids["sm"].current = "game"
-        if int(obj.text) == 1:
-            self.ids["sm"].current = "letter"
-        else:
-            self.ids["game"].clear_widgets()
-            self.ids["game"].add_widget(Enter_Animation())
-            Clock.schedule_once(self.fade, 1.95)
-            Clock.schedule_once(partial(self.press_setup, obj), 2.1)
+        #if int(obj.text) == 1:
+        #    self.ids["sm"].current = "letter"
+        #else:
+        self.ids["game"].clear_widgets()
+        self.ids["game"].add_widget(Enter_Animation())
+        Clock.schedule_once(self.fade, 1.95)
+        Clock.schedule_once(partial(self.press_setup, obj), 2.1)
     def press_setup(self, obj, dt):
         self.ids["game"].clear_widgets()
         self.ids["game"].add_widget(Cube(int(obj.text)))
@@ -631,7 +636,7 @@ class Menu(Widget):
     def next_level(self):
         self.current_level +=1
         if self.current_level > len(levelBuilder().find_levels()):
-            self.current_level = 1 #LAST LEVEL
+            self.current_level = 1
         self.ids["game"].clear_widgets()
         self.ids["game"].add_widget(Enter_Animation())
         Clock.schedule_once(self.fade, 1.95)
