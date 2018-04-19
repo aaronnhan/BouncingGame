@@ -170,7 +170,7 @@ Builder.load_string("""
 <Laser>:
     Image:
         id: laser
-        source: "images/red.png"
+        source: "images/red.jpg"
         center: self.center
         allow_stretch: True
         keep_ratio: False
