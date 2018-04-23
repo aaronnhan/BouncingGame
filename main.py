@@ -170,7 +170,7 @@ Builder.load_string("""
 <Laser>:
     Image:
         id: laser
-        source: "images/red.jpg"
+        source: "images/red.png"
         center: self.center
         allow_stretch: True
         keep_ratio: False
@@ -207,7 +207,7 @@ Builder.load_string("""
             canvas.after:
                 PopMatrix
 """)
-Window.size = (592, 288)
+#Window.size = (592, 288)
 ratio_y = Window.height/144.
 ratio_x = Window.width/296.
 class levelBuilder():
@@ -304,6 +304,7 @@ class Player(Widget):
         self.walllist = walllist
         self.restart()
         self.node = None
+        self.inc = .07
         #if type(self.nodelist[0]) is not str:
         #    self.start_center = [Window.width/10,self.nodelist[0].ids["node"].y]
         self.finished = False
@@ -330,7 +331,7 @@ class Player(Widget):
             self.ids["player"].x +=self.velocity[0]*ratio_x
             self.ids["player"].y +=self.velocity[1]*ratio_y
         else:
-            self.angle += .1*self.direction
+            self.angle += self.inc*self.direction
             self.ids["player"].center_x = self.node.ids["node"].center_x + self.node.radius*cos(self.angle)
             self.ids["player"].center_y = self.node.ids["node"].center_y + self.node.radius*sin(self.angle)
     def calcAngle(self):
@@ -386,7 +387,13 @@ class Player(Widget):
                     self.lastWall[1] = time.time()
         if self.node:
             self.angle = self.calcAngle()
+    #def on_touch_down(self, key):
+    #    self.inc = .04
+    #    Clock.schedule_once(self.norm_inc, .5)
+    #def norm_inc(self, dt):
+    #    self.inc = .07
     def on_touch_down(self, key):
+        self.inc = .07
         #if  self.parent.parent.children[0].collide_point(key.x, key.y): #BUTTON DETECTION
             #return None #CAN CHANGE TO IF
         if self.node:
