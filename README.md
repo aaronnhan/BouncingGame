@@ -1,7 +1,13 @@
 # BouncingGame
+
+Update: The game is out!
+The game is available:
+https://play.google.com/store/apps/details?id=nhan.app.cubeapp
+https://itunes.apple.com/us/app/supercube/id1415264803?mt=8
+
 Bouncing Game coming to Google Play Store near you!
 This is a project independently created by Aaron Nhan '22
-The purpose of this is to create a working application and hopefully upload it to the Google Play Store.
+The purpose of this is to create a working application and upload it to the Google Play Store/Apple App Store.
 
 
 Bouncing Game has an out-of-client customizable level system. The format is below
