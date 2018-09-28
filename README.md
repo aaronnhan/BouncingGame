@@ -2,6 +2,7 @@
 
 Update: The game is out!
 The game is available:
+
 https://play.google.com/store/apps/details?id=nhan.app.cubeapp
 https://itunes.apple.com/us/app/supercube/id1415264803?mt=8
 
