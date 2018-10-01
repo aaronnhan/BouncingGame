@@ -147,9 +147,7 @@ Builder.load_string("""
             name: "1"
             Game_layout:
                 id: layout1
-<GameScreen>:
-    FloatLayout:
-        id:gamescreen
+
 <Player>:
     Image:
         id: player
@@ -207,10 +205,10 @@ Builder.load_string("""
             canvas.after:
                 PopMatrix
 """)
-#Window.size = (592, 288)
-ratio_y = Window.height/144.
+#Window.size = (592, 288) USED ON Windows where screen size has to be manually inputted
+ratio_y = Window.height/144. 
 ratio_x = Window.width/296.
-class levelBuilder():
+class levelBuilder(): #Called to create levels
     def __init__(self):
         self.nodeList = []
         self.wallList = []
@@ -237,7 +235,7 @@ class levelBuilder():
         x = int(listy[0])
         y = int(listy[1])
         return Obstacle(x,y)
-    def find_levels(self):
+    def find_levels(self): # Finds level text file with info
         levels = []
         for file in listdir("levels"):
             if file.endswith(".txt"):
@@ -245,7 +243,7 @@ class levelBuilder():
         levels.sort()
         return levels
 
-    def returnText(self, filepath):
+    def returnText(self, filepath): # Returns level info in more parsable format
         try:
             f = open(filepath)
             text = f.read()
@@ -263,9 +261,9 @@ class levelBuilder():
         for x in string.split(","):
             myList.append(x)
         return myList
-    def parseList(self,listy):
-        returnList = []#list of faces
-        for x in listy: #Each face; always 6
+    def parseList(self,listy): # Takes level info and sorts walls, nodes, lasers into their corresponding list
+        returnList = []
+        for x in listy: 
             nodelist = []
             walllist = []
             laserlist = []
@@ -282,7 +280,7 @@ class levelBuilder():
             returnList.append([nodelist, walllist, laserlist])
         return returnList
     
-    def return_level(self,level):
+    def return_level(self,level): #wraps up class functions into one nice callable function
         myBuilder = levelBuilder()
         levelList = myBuilder.find_levels() # list of levels
         filename = "levels/" + str(level) + ".txt" # makes file path
@@ -305,18 +303,16 @@ class Player(Widget):
         self.restart()
         self.node = None
         self.inc = .07
-        #if type(self.nodelist[0]) is not str:
-        #    self.start_center = [Window.width/10,self.nodelist[0].ids["node"].y]
         self.finished = False
     def set_lists(self, listy):
         self.nodelist = listy[0]
         self.walllist = listy[1]
         self.laserlist = listy[2]
-    def update(self, dt):
+    def update(self, dt): #called every 1/60 seconds to update position
         if not self.node:
             self.checkNode()
         self.updatePos()
-    def inBound(self):
+    def inBound(self): # tests for if player is in bounds
         if self.ids["player"].center_x <= 0:
             self.parent.change_face(3)
         elif self.ids["player"].center_y <= 0:
@@ -327,14 +323,14 @@ class Player(Widget):
             self.parent.change_face(0)
     def updatePos(self):
         self.inBound()
-        if self.node == None:
+        if self.node == None: #if player isnt attached to a node
             self.ids["player"].x +=self.velocity[0]*ratio_x
             self.ids["player"].y +=self.velocity[1]*ratio_y
-        else:
+        else: #player is attached to a node and needs to spin
             self.angle += self.inc*self.direction
             self.ids["player"].center_x = self.node.ids["node"].center_x + self.node.radius*cos(self.angle)
             self.ids["player"].center_y = self.node.ids["node"].center_y + self.node.radius*sin(self.angle)
-    def calcAngle(self):
+    def calcAngle(self): # calculates the angle at which the player is coming into a node
         ydif = (float)(self.node.ids["node"].center_y - self.ids["player"].center_y)
         xdif = (float)(self.node.ids["node"].center_x - self.ids["player"].center_x)
         if xdif == 0:
@@ -356,7 +352,7 @@ class Player(Widget):
                 self.direction = -1
             
         return angle
-    def checkNode(self):
+    def checkNode(self): # checks if player runs into walls or lasers or node
         for x in range(len(self.nodelist)):
             distance = sqrt(pow(self.ids["player"].center_y - self.nodelist[x].ids["node"].center_y, 2) + 
                     pow(self.ids["player"].center_x - self.nodelist[x].ids["node"].center_x, 2))
@@ -387,15 +383,8 @@ class Player(Widget):
                     self.lastWall[1] = time.time()
         if self.node:
             self.angle = self.calcAngle()
-    #def on_touch_down(self, key):
-    #    self.inc = .04
-    #    Clock.schedule_once(self.norm_inc, .5)
-    #def norm_inc(self, dt):
-    #    self.inc = .07
-    def on_touch_down(self, key):
+    def on_touch_down(self, key): # When the user presses the screen
         self.inc = .07
-        #if  self.parent.parent.children[0].collide_point(key.x, key.y): #BUTTON DETECTION
-            #return None #CAN CHANGE TO IF
         if self.node:
             lAngle = self.angle + (pi/2.)*self.direction
             x = self.node.radius*cos(lAngle)
@@ -418,7 +407,7 @@ class Player(Widget):
 
             self.velocity = [abs(2*x/ratio)*xDir, abs(2*y/ratio)*yDir]
             self.node = None
-    def restart(self, *args):
+    def restart(self, *args): # When the player dies resets values and level
         self.last_node = None
         self.node = None
         self.angle = None
@@ -455,7 +444,7 @@ class Wall(Widget):
         self.ids["wall"].source = "images/white.jpeg"
         self.ids["wall"].keep_ratio = False
         self.ids["wall"].allow_stretch = True
-        with self.canvas:
+        with self.canvas: # making tiling for walls
             Color(.4, .4, .4, 1)
             texture = CoreImage("images/box.png").texture
             texture.wrap = 'repeat'
@@ -508,16 +497,11 @@ class Game_layout(Widget):
             self.gameLayout.add_widget(self.laserList[x])
         for x in range(len(self.wallList)):
             self.gameLayout.add_widget(self.wallList[x])
-    #def check_finished(self, dt):
-    #    self.finished = self.myPlayer.finished
-class GameScreen(Screen):
-    pass
-class Cube(Widget):
+class Cube(Widget): # manages switching of screens and both parts of the level
     def __init__(self, level,**kwargs):
         super(Cube, self).__init__(**kwargs)
         self.builder = levelBuilder()
         self.level = level
-        self.face_guide = [[3,2,1,4],[0,2,5,4],[0,3,5,1],[0,4,5,2],[0,1,5,3],[1,2,3,4]]
         self.faces = self.builder.return_level(level) # list of lists for gamelayout (nodelist, etc.)
         for x in range(2):
             self.ids["layout" + str(x)].set_lists(self.faces[x][0], self.faces[x][1],self.faces[x][2])
@@ -558,7 +542,7 @@ class Cube(Widget):
     def next_level(self, obj):
         self.finish_popup.dismiss()
         self.parent.parent.parent.next_level()
-    def change_face(self, direction):
+    def change_face(self, direction): # changing screens
         self.ids["sm"].transition.direction = self.dir_list[direction]
         self.ids["sm"].current = str(1- int(self.ids["sm"].current))
         self.myPlayer.set_lists(self.faces[int(self.ids["sm"].current)])
@@ -576,24 +560,14 @@ class Cube(Widget):
         else:
             self.myPlayer.on_touch_down(touch)
 
-class Menu(Widget):
+class Menu(Widget): # menu interface that the user interacts with 
     def __init__(self,**kwargs):
         self.window_height = Window.height
         super(Menu, self).__init__(**kwargs)
-        #self.ids["letter"].text = """[color=000000]Dear Son\n
-        #        If you're reading this, I'm glad you got this message.\n
-        #        As I was taking my morning stroll, I fell down 15 consecutive holes.\n
-        #        My vision isn't what it used to be.\n
-        #        I would be much obliged if you could rescue me before dinner.\n
-        #        Love, Dad"""
-        #self.ids["letter_screen"].add_widget(Button(background_color = (1,0,0,0), on_release = partial(self.press_setup2, 1)))
         with open("current.txt","r") as file:
             self.unlocked_level = int(file.read())
             file.close()
         self.make_menu()
-        #self.ids["box"].height = len(self.ids["box"].children)*self.ids["box"].children[0].height
-        #print "children height: ", self.ids["box"].children[0].height
-        #print "height: ", self.ids["box"].height
         self.current_level = 0
     def make_menu(self):
         self.ids["box"].clear_widgets()
@@ -605,9 +579,6 @@ class Menu(Widget):
         self.ids["box"].add_widget(myLayout)
     def press(self, obj):
         self.ids["sm"].current = "game"
-        #if int(obj.text) == 1:
-        #    self.ids["sm"].current = "letter"
-        #else:
         self.ids["game"].clear_widgets()
         self.ids["game"].add_widget(Enter_Animation())
         Clock.schedule_once(self.fade, 1.95)
@@ -654,7 +625,7 @@ class Menu(Widget):
         self.ids["game"].add_widget(Enter_Animation())
         Clock.schedule_once(self.fade, 1.95)
         Clock.schedule_once(partial(self.press_setup, Button(text = "1")), 2.1)
-class Enter_Animation(Widget):
+class Enter_Animation(Widget): #animation for entering a level
     def __init__(self, **kwargs):
         super(Enter_Animation, self).__init__(**kwargs)
         self.animate()
