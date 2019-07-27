@@ -1,6 +1,7 @@
 # BouncingGame
 
 Update: The game is out!
+Update 2: I have taken the game down because the Google Play Store and Apple App store require 64 bit binaries or annual developers fees. Please contact me if you would like a copy.
 The game is available:
 
 https://play.google.com/store/apps/details?id=nhan.app.cubeapp
